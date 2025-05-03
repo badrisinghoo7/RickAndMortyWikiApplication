@@ -6,50 +6,43 @@ import ToggleThemeComponents from "./ToggleThemeComponents";
 import { useNavigate } from "react-router-dom";
 
 const Charater = () => {
-  const [apiPage, setApiPage] = useState(1); // API page
-  const [localPage, setLocalPage] = useState(1); // Local page for showing 6 per page
-  const [data, setData] = useState([]);
-  const [info, setInfo] = useState({});
+  const [allCharacters, setAllCharacters] = useState([]);
+  const [page, setPage] = useState(1);
+  const itemsPerPage = 6;
   const navigate = useNavigate();
 
-  const itemsPerPage = 6;
-
   useEffect(() => {
-    fetch(`https://rickandmortyapi.com/api/character?page=${apiPage}`)
-      .then((res) => res.json())
-      .then((data) => {
-        setData(data.results);
-        setInfo(data.info);
-      });
-  }, [apiPage]);
+    const fetchAllCharacters = async () => {
+      try {
+        let characters = [];
+        let nextUrl = "https://rickandmortyapi.com/api/character";
 
-  const totalLocalPages = Math.ceil(data.length / itemsPerPage);
-  const currentPageData = data.slice(
-    (localPage - 1) * itemsPerPage,
-    localPage * itemsPerPage
+        while (nextUrl) {
+          const res = await fetch(nextUrl);
+          const data = await res.json();
+          characters = characters.concat(data.results);
+          nextUrl = data.info.next;
+        }
+
+        setAllCharacters(characters);
+      } catch (error) {
+        console.error("Error fetching characters:", error);
+      }
+    };
+
+    fetchAllCharacters();
+  }, []);
+
+  const totalPages = Math.ceil(allCharacters.length / itemsPerPage);
+  const startIndex = (page - 1) * itemsPerPage;
+  const currentPageData = allCharacters.slice(
+    startIndex,
+    startIndex + itemsPerPage
   );
 
-  const handleNext = () => {
-    if (localPage < totalLocalPages) {
-      setLocalPage((p) => p + 1);
-    } else if (info.next) {
-      setApiPage((p) => p + 1);
-      setLocalPage(1); // Reset local page
-    }
-  };
-
-  const handlePrevious = () => {
-    if (localPage > 1) {
-      setLocalPage((p) => p - 1);
-    } else if (apiPage > 1) {
-      setApiPage((p) => p - 1);
-      setLocalPage(Math.ceil(20 / itemsPerPage)); // Assume API always returns 20
-    }
-  };
-
-  const handleClickRandom = () => {
-    const randomPage = Math.floor(Math.random() * 826)+ 1;
-    navigate(`/character/${randomPage}`);
+  const handleRandomClick = () => {
+    const randomId = Math.floor(Math.random() * 826) + 1;
+    navigate(`/character/${randomId}`);
   };
 
   return (
@@ -57,10 +50,11 @@ const Charater = () => {
       <h1 style={{ textAlign: "center", marginBottom: "20px" }}>
         Rick and Morty Characters
       </h1>
+
       <div
         style={{ display: "flex", justifyContent: "center", padding: "20px" }}
       >
-        <button onClick={handleClickRandom}>Random Character</button>
+        <button onClick={handleRandomClick}>Random Character</button>
         <ToggleThemeComponents />
       </div>
 
@@ -80,29 +74,35 @@ const Charater = () => {
 
       {/* Pagination */}
       <div
-        style={{ display: "flex", justifyContent: "center", marginTop: "30px" }}
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          marginTop: "30px",
+          alignItems: "center",
+          gap: "20px",
+        }}
       >
         <button
-          onClick={handlePrevious}
-          disabled={apiPage === 1 && localPage === 1}
+          onClick={() => setPage((p) => Math.max(p - 1, 1))}
+          disabled={page === 1}
           style={{
             padding: "10px 20px",
-            marginRight: "10px",
-            cursor:
-              apiPage === 1 && localPage === 1 ? "not-allowed" : "pointer",
+            cursor: page === 1 ? "not-allowed" : "pointer",
           }}
         >
           Previous
         </button>
+
+        <span style={{ fontWeight: "bold" }}>
+          Page {page} of {totalPages}
+        </span>
+
         <button
-          onClick={handleNext}
-          disabled={!info.next && localPage === totalLocalPages}
+          onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
+          disabled={page === totalPages}
           style={{
             padding: "10px 20px",
-            cursor:
-              !info.next && localPage === totalLocalPages
-                ? "not-allowed"
-                : "pointer",
+            cursor: page === totalPages ? "not-allowed" : "pointer",
           }}
         >
           Next
